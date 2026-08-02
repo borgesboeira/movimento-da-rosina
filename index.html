@@ -30,6 +30,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
 </head>
 <body>
   <main class="app">
@@ -369,7 +370,7 @@ document.getElementById('history')?.addEventListener('click', e=>{
       reader.onload = ()=>{ editExUploadData = reader.result; const p=document.getElementById('edit-ex-preview'); if(p) p.src = editExUploadData; };
       reader.readAsDataURL(f);
     });
-    document.getElementById('edit-ex-save')?.addEventListener('click', function(){
+    document.getElementById('edit-ex-save')?.addEventListener('click', async function(){
       const modal = document.getElementById('edit-exercise-modal');
       const key = modal.dataset.key || ('e-'+Date.now());
       const name = document.getElementById('edit-ex-name').value.trim();
@@ -380,7 +381,28 @@ document.getElementById('history')?.addEventListener('click', e=>{
       exercises[key].name = name;
       exercises[key].goal = goal;
       exercises[key].steps = steps;
-      if(editExUploadData) exercises[key].img = editExUploadData;
+
+      // If an image was uploaded, try to store it in Firebase Storage (recommended) and save URL; fallback to dataURL locally
+      if(editExUploadData){
+        // if firebase storage available and user signed in, upload
+        if(window.firebase && firebase.storage && window.__rosina_uid){
+          try{
+            const storageRef = firebase.storage().ref().child(`users/${window.__rosina_uid}/exercises/${key}.png`);
+            // upload data URL
+            await storageRef.putString(editExUploadData, 'data_url');
+            const url = await storageRef.getDownloadURL();
+            exercises[key].img = url;
+          }catch(err){
+            console.warn('Storage upload failed, falling back to local data URL',err);
+            exercises[key].img = editExUploadData;
+            alert('Imagem salva localmente, houve problema ao enviar ao servidor.');
+          }
+        } else {
+          // no storage available — keep data URL in local doc (may increase doc size)
+          exercises[key].img = editExUploadData;
+        }
+      }
+
       saveExercises();
       closeEditExerciseModal();
       library();
@@ -429,11 +451,19 @@ function setSoundMode(m){localStorage.setItem(KEY+'-sound',m); if(soundBtn) soun
 function getSoundMultiplier(){const m=getSoundMode(); if(m==='off') return 0; if(m==='soft') return 0.5; if(m==='loud') return 1.5; return 1}
 if(soundBtn){soundBtn.addEventListener('click',()=>{const modes=['on','soft','loud','off'];const next=modes[(modes.indexOf(getSoundMode())+1)%modes.length];setSoundMode(next)})}
 setSoundMode(getSoundMode())
+
+// AudioContext helper: create/resume once on user gesture for mobile compatibility
+function ensureAudioContext(){try{if(!window.__rosina_audio_ctx){window.__rosina_audio_ctx=new (window.AudioContext||window.webkitAudioContext)();}
+  if(window.__rosina_audio_ctx.state==='suspended'){window.__rosina_audio_ctx.resume().catch(()=>{});}return window.__rosina_audio_ctx}catch(e){console.warn('audio ctx',e);return null}}
+
+// unlock audio on first user interaction (important for mobile browsers)
+function unlockAudioOnGesture(){function once(){ensureAudioContext(); document.removeEventListener('touchstart',once); document.removeEventListener('click',once);} document.addEventListener('touchstart',once,{passive:true}); document.addEventListener('click',once,{passive:true});}
+unlockAudioOnGesture()
 // Timer state and helpers
 const timerState={interval:null,remaining:0,running:false};
 function parseDurationText(s){if(!s) return null; const t=(s||'').replace(/[^0-9a-zA-Z ]+/g,' '); const nums=t.match(/\d+/g); if(!nums) return null; const n=parseInt(nums[0],10); if(/min/i.test(s)) return n*60; return n;}
 function formatTime(secs){const m=Math.floor(secs/60);const s=secs%60;return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`}
-function playTone(freq,duration,vol){try{const mult=getSoundMultiplier();if(mult===0)return;const C=new (window.AudioContext||window.webkitAudioContext)();const o=C.createOscillator();const g=C.createGain();o.type='sine';o.frequency.value=freq;g.gain.setValueAtTime(0.0001,C.currentTime);o.connect(g);g.connect(C.destination);o.start();const target= Math.max(0.001, (vol||0.1) * mult);g.gain.linearRampToValueAtTime(target,C.currentTime+0.01);g.gain.linearRampToValueAtTime(0.0001,C.currentTime+duration/1000);setTimeout(()=>{try{o.stop();C.close();}catch(e){}},duration+60);}catch(e){console.warn('tone',e)}}
+function playTone(freq,duration,vol){try{const mult=getSoundMultiplier();if(mult===0)return;const C = ensureAudioContext(); if(!C) return; const o=C.createOscillator();const g=C.createGain();o.type='sine';o.frequency.value=freq;g.gain.setValueAtTime(0.0001,C.currentTime);o.connect(g);g.connect(C.destination);o.start();const target= Math.max(0.001, (vol||0.1) * mult);g.gain.linearRampToValueAtTime(target,C.currentTime+0.01);g.gain.linearRampToValueAtTime(0.0001,C.currentTime+duration/1000);setTimeout(()=>{try{o.stop();}catch(e){}},duration+60);}catch(e){console.warn('tone',e)}}
 
 function playPrepBeep(){playTone(1200,100,0.25)}
 function playWarningBeep(){playTone(900,120,0.35);setTimeout(()=>playTone(900,120,0.25),160)}
