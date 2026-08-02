@@ -23,6 +23,8 @@
 #timer-label{color:var(--muted);margin-top:6px}
 .start-exercise-timer{border:1px solid var(--teal);background:transparent;color:var(--teal);padding:10px 12px;border-radius:12px;font-weight:800}
 .start-exercise-timer:focus{outline:3px solid rgba(9,93,87,0.12)}
+.pulse{animation:pulse 0.9s ease-in-out 0s 2;box-shadow:0 8px 18px rgba(15,118,110,.12)}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.04)}100%{transform:scale(1)}}
 @media (min-width:700px){.app{padding-top:32px}}
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
@@ -40,7 +42,15 @@
       </div>
       <span class="heart" aria-hidden="true">♥</span>
     </header>
-    <section id="home" class="screen active" aria-labelledby="home-title">
+    <section id="welcome" class="screen active" aria-labelledby="welcome-title">
+      <h1 id="welcome-title">Bem-vinda</h1>
+      <p class="lead">Escolha uma opção para hoje</p>
+      <div class="card" style="display:flex;flex-direction:column;gap:12px">
+        <button class="primary" data-go="home">Exercícios</button>
+        <button class="secondary" data-go="recipes">Receitas saudáveis</button>
+      </div>
+    </section>
+    <section id="home" class="screen" aria-labelledby="home-title">
       <p class="eyebrow">Agosto e setembro</p><h1 id="home-title">Um passo de cada vez.</h1><p class="lead">Movimentos suaves, com apoio e no seu ritmo.</p>
       <div class="safety"><b>Antes de começar:</b> faça somente o que o cardiologista ou fisioterapeuta liberou. Pare se houver dor ou pressão no peito, tontura, palpitação, falta de ar fora do habitual ou mal-estar.</div>
       <div id="today-card" class="card today"></div>
@@ -71,6 +81,13 @@
       <div id="session-content"></div>
       <button id="done-button" class="primary done">Marcar como feito hoje</button>
       <p class="small" style="text-align:center;margin:12px 12px 0">Sem pressa. Respirar normalmente faz parte do exercício.</p>
+    </section>
+
+    <section id="recipes" class="screen" aria-labelledby="recipes-title">
+      <p class="eyebrow">Receitas</p>
+      <h1 id="recipes-title">Receitas saudáveis</h1>
+      <p class="lead">Receitas simples, nutritivas e adaptadas para quem tem restrições cardíacas e sobrepeso.</p>
+      <div id="recipes-list" class="card"></div>
     </section>
 
     <section id="calendar-view" class="screen" aria-labelledby="calendar-title">
@@ -216,6 +233,45 @@
         }
       }
     };
+
+    // Additional low-impact exercises tailored for cardiopathy and overweight (reuse existing image style)
+    exercises['respiracao-leve'] = {
+      name: 'Respiração guiada sentada',
+      img: 'assets/bracos.png',
+      goal: 'Respiração diafragmática para controle cardíaco e relaxamento.',
+      steps: ['Sente-se com costas altas, mãos sobre o abdômen.','Inspire contando até 4, segure 1 segundo, expire contando até 6.','Repita por 1 a 2 minutos, em ritmo confortável.'],
+      dose: '1 a 2 minutos de respiração guiada, várias vezes ao dia se necessário.',
+      variants: {
+        ready: {duration: '60 segundos', dose: '1 minuto de respiração controlada.'},
+        gentle: {duration: '45 segundos', dose: '45 segundos de respiração suave.'},
+        pause: {duration: '30 segundos', dose: '30 segundos apenas para mobilidade respiratória.'}
+      }
+    };
+    exercises['alcance-sentada'] = {
+      name: 'Alcance sentado leve',
+      img: 'assets/marcha-sentada.png',
+      goal: 'Melhora mobilidade do tronco/ombros sem carga cardiovascular excessiva.',
+      steps: ['Sente-se com postura neutra.','Alcance com uma mão na frente até a altura confortável e retorne.','Repita alternando os lados, em ritmo suave.'],
+      dose: '6 a 8 repetições por lado em ritmo confortável.',
+      variants: {
+        ready: {reps: '6 a 8', dose: '6 a 8 repetições por lado.'},
+        gentle: {reps: '4 a 6', dose: '4 a 6 repetições suaves.'},
+        pause: {reps: '2 a 3', dose: '2 a 3 repetições apenas para movimentar.'}
+      }
+    };
+    exercises['equilibrio-parado'] = {
+      name: 'Equilíbrio com apoio',
+      img: 'assets/calcanhares.png',
+      goal: 'Treino de equilíbrio com apoio da cadeira para segurança.',
+      steps: ['Fique atrás da cadeira e segure o encosto.','Levante um pé alguns centímetros, mantenha por 2 segundos e troque.','Faça em ritmo que permita conversar.'],
+      dose: '30 segundos a 1 minuto total, dividido em blocos.',
+      variants: {
+        ready: {duration: '45 segundos', dose: '45 segundos com apoio leve.'},
+        gentle: {duration: '30 segundos', dose: '30 segundos em ritmo bem suave.'},
+        pause: {duration: '20 segundos', dose: '20 segundos apenas para mobilidade.'}
+      }
+    };
+
     function localDate(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate())} function key(d){return d.toISOString().slice(0,10)}
     function data(){try{return JSON.parse(localStorage.getItem(KEY))||{done:{}}}catch{return {done:{}}}} function save(x){localStorage.setItem(KEY,JSON.stringify(x)); try{ if(window && window.__rosina_uid && typeof saveRemote==='function') saveRemote(x); }catch(e){/* ignore */} }
     function current(){let n=localDate(new Date()); if(n<START)return START;if(n>END)return END;return n} function index(d){return Math.floor((localDate(d)-START)/86400000)}
@@ -307,7 +363,7 @@ function startTimer(){
 function pauseTimer(){if(!timerState.running) return;clearInterval(timerState.interval);timerState.interval=null;timerState.running=false;document.getElementById('timer-start').disabled=false;document.getElementById('timer-pause').disabled=true}
 function resetTimer(){if(timerState.interval){clearInterval(timerState.interval);timerState.interval=null} if(timerState.prep){clearInterval(timerState.prep);timerState.prep=null}timerState.running=false;timerState.remaining=0;document.getElementById('exercise-timer').classList.add('hide')}
 
-function onTimerComplete(){try{playEndBeep()}catch(e){}document.getElementById('timer-label').textContent='Concluído';if(!document.getElementById('timer-complete-mark')){const btn=document.createElement('div');btn.style.marginTop='8px';btn.innerHTML='<button id="timer-complete-mark" class="primary">Marcar como feito hoje</button>';document.getElementById('exercise-timer').appendChild(btn);document.getElementById('timer-complete-mark').addEventListener('click',()=>{document.getElementById('done-button').click();btn.remove()})}}
+function onTimerComplete(){try{playEndBeep()}catch(e){}document.getElementById('timer-label').textContent='Concluído';const doneBtn=document.getElementById('done-button');if(doneBtn){try{doneBtn.scrollIntoView({behavior:'smooth',block:'center'});doneBtn.classList.add('pulse');setTimeout(()=>doneBtn.classList.remove('pulse'),2200);}catch(e){}}}
 
 // delegate clicks for start buttons (robust: uses closest and logs errors)
 document.addEventListener('click', e => {
@@ -329,7 +385,20 @@ document.addEventListener('click', e => {
 document.addEventListener('DOMContentLoaded',()=>{const s=document.getElementById('timer-start'),p=document.getElementById('timer-pause'),r=document.getElementById('timer-reset');if(s) s.addEventListener('click',startTimer); if(p) p.addEventListener('click',pauseTimer); if(r) r.addEventListener('click',resetTimer)});
 
 loadSize();loadComfort();
+// show welcome choice screen first
+show('welcome');
 home();session();calendar();library();
+
+// Recipes rendering
+const recipes = {
+  'aveia-fruta':{title:'Aveia com frutas e iogurte',img:'',desc:'Café da manhã nutritivo com fibras e baixo teor de gordura.',ingredients:['1/2 xícara de aveia','1 copo de iogurte natural desnatado','1/2 banana fatiada','1 colher de sopa de semente de chia'],steps:['Misture aveia e iogurte.','Adicione fruta fatiada e chia.','Sirva frio.']},
+  'sopa-legumes':{title:'Sopa leve de legumes',img:'',desc:'Sopa com baixo teor de sódio e rica em fibras.',ingredients:['1 batata doce pequena','1 cenoura','1 abobrinha','1/2 cebola','caldo de legumes caseiro'],steps:['Pique os legumes.','Cozinhe em caldo até macio.','Bata no liquidificador se preferir textura cremosa.']}
+};
+function renderRecipes(){const list=document.getElementById('recipes-list');list.innerHTML=Object.entries(recipes).map(([k,r])=>`<article class="card"><h2>${r.title}</h2><p class="small">${r.desc}</p><b>Ingredientes</b><ul>${r.ingredients.map(i=>`<li>${i}</li>`).join('')}</ul><b>Modo</b><ol>${r.steps.map(s=>`<li>${s}</li>`).join('')}</ol></article>`).join('')}
+
+// when navigating to recipes, render
+document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{show(b.dataset.go);if(b.dataset.go==='home')home();if(b.dataset.go==='session')session();if(b.dataset.go==='calendar-view')calendar();if(b.dataset.go==='recipes')renderRecipes()}));
+
   </script>
 </body>
 </html>
