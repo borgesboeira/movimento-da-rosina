@@ -245,15 +245,69 @@ function loadComfort(){let c=localStorage.getItem(KEY+'-comfort')==='true';if(co
 const timerState={interval:null,remaining:0,running:false};
 function parseDurationText(s){if(!s) return null; const t=(s||'').replace(/[^0-9a-zA-Z ]+/g,' '); const nums=t.match(/\d+/g); if(!nums) return null; const n=parseInt(nums[0],10); if(/min/i.test(s)) return n*60; return n;}
 function formatTime(secs){const m=Math.floor(secs/60);const s=secs%60;return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`}
-function playBeep(){try{const C=new (window.AudioContext||window.webkitAudioContext)();const o=C.createOscillator();const g=C.createGain();o.type='sine';o.frequency.value=880;g.gain.value=0.001;o.connect(g);g.connect(C.destination);o.start();g.gain.exponentialRampToValueAtTime(0.25,C.currentTime+0.02);g.gain.exponentialRampToValueAtTime(0.0001,C.currentTime+0.8);setTimeout(()=>{try{o.stop();C.close();}catch(e){}},900);}catch(e){console.warn('beep',e)}}
+function playTone(freq,duration,vol){try{const C=new (window.AudioContext||window.webkitAudioContext)();const o=C.createOscillator();const g=C.createGain();o.type='sine';o.frequency.value=freq;g.gain.setValueAtTime(0.0001,C.currentTime);o.connect(g);g.connect(C.destination);o.start();g.gain.linearRampToValueAtTime(Math.max(0.001,vol),C.currentTime+0.01);g.gain.linearRampToValueAtTime(0.0001,C.currentTime+duration/1000);setTimeout(()=>{try{o.stop();C.close();}catch(e){}},duration+60);}catch(e){console.warn('tone',e)}}
 
-function showTimer(seconds,label,anchor){timerState.remaining=seconds;const container=document.getElementById('exercise-timer');try{if(anchor && anchor.closest){const art=anchor.closest('article');if(art && art.parentNode){art.parentNode.insertBefore(container, art.nextSibling);}}else{const main=document.querySelector('main.app');if(main && container.parentNode!==main){main.insertBefore(container, main.querySelector('#session-content')||null);}}}catch(e){}
-document.getElementById('timer-display').textContent=formatTime(seconds);document.getElementById('timer-label').textContent=label||'Temporizador';container.classList.remove('hide');document.getElementById('timer-start').disabled=false;document.getElementById('timer-pause').disabled=true;document.getElementById('timer-reset').disabled=false}
+function playPrepBeep(){playTone(1200,100,0.25)}
+function playWarningBeep(){playTone(900,120,0.35);setTimeout(()=>playTone(900,120,0.25),160)}
+function playEndBeep(){playTone(1400,140,0.6);setTimeout(()=>playTone(1100,160,0.6),180);setTimeout(()=>playTone(900,260,0.9),380)}
 
-function startTimer(){if(timerState.running||timerState.remaining<=0) return;timerState.interval=setInterval(()=>{timerState.remaining--;document.getElementById('timer-display').textContent=formatTime(timerState.remaining);if(timerState.remaining<=0){clearInterval(timerState.interval);timerState.interval=null;timerState.running=false;document.getElementById('timer-display').textContent='00:00';onTimerComplete()}},1000);timerState.running=true;document.getElementById('timer-start').disabled=true;document.getElementById('timer-pause').disabled=false}
+function showTimer(seconds,label,anchor){
+  // ensure previous timers cleared
+  try{ if(timerState.interval){clearInterval(timerState.interval);timerState.interval=null} if(timerState.prep){clearInterval(timerState.prep);timerState.prep=null} }catch(e){}
+  const container=document.getElementById('exercise-timer');
+  try{
+    if(anchor && anchor.closest){const art=anchor.closest('article');if(art && art.parentNode){art.parentNode.insertBefore(container, art.nextSibling);}}
+    else{const main=document.querySelector('main.app');if(main && container.parentNode!==main){main.insertBefore(container, main.querySelector('#session-content')||null);}}
+  }catch(e){}
+
+  // preparation countdown (5 seconds with beep each second)
+  let prep = 5;
+  document.getElementById('timer-display').textContent = formatTime(prep);
+  document.getElementById('timer-label').textContent = 'Preparar';
+  container.classList.remove('hide');
+  document.getElementById('timer-start').disabled = true;
+  document.getElementById('timer-pause').disabled = true;
+  document.getElementById('timer-reset').disabled = false;
+
+  // immediate prep beep
+  try{ playPrepBeep(); }catch(e){}
+  timerState.prep = setInterval(()=>{
+    prep--;
+    if(prep>0){
+      document.getElementById('timer-display').textContent = formatTime(prep);
+      try{ playPrepBeep(); }catch(e){}
+    } else {
+      clearInterval(timerState.prep); timerState.prep = null;
+      // start main timer automatically
+      timerState.remaining = seconds;
+      document.getElementById('timer-display').textContent = formatTime(timerState.remaining);
+      document.getElementById('timer-label').textContent = label||'Temporizador';
+      // small start sound
+      try{ playTone(1000,100,0.2); }catch(e){}
+      startTimer();
+    }
+  },1000);
+}
+
+function startTimer(){
+  if(timerState.running || timerState.remaining<=0) return;
+  timerState.interval = setInterval(()=>{
+    timerState.remaining--;
+    document.getElementById('timer-display').textContent = formatTime(timerState.remaining);
+    if(timerState.remaining===5){ try{ playWarningBeep(); }catch(e){} }
+    if(timerState.remaining<=0){
+      clearInterval(timerState.interval); timerState.interval=null; timerState.running=false; document.getElementById('timer-display').textContent='00:00'; onTimerComplete();
+    }
+  },1000);
+  timerState.running = true;
+  document.getElementById('timer-start').disabled = true;
+  document.getElementById('timer-pause').disabled = false;
+}
+
 function pauseTimer(){if(!timerState.running) return;clearInterval(timerState.interval);timerState.interval=null;timerState.running=false;document.getElementById('timer-start').disabled=false;document.getElementById('timer-pause').disabled=true}
-function resetTimer(){if(timerState.interval){clearInterval(timerState.interval);timerState.interval=null}timerState.running=false;timerState.remaining=0;document.getElementById('exercise-timer').classList.add('hide')}
-function onTimerComplete(){try{playBeep()}catch(e){}document.getElementById('timer-label').textContent='Concluído';if(!document.getElementById('timer-complete-mark')){const btn=document.createElement('div');btn.style.marginTop='8px';btn.innerHTML='<button id="timer-complete-mark" class="primary">Marcar como feito hoje</button>';document.getElementById('exercise-timer').appendChild(btn);document.getElementById('timer-complete-mark').addEventListener('click',()=>{document.getElementById('done-button').click();btn.remove()})}}
+function resetTimer(){if(timerState.interval){clearInterval(timerState.interval);timerState.interval=null} if(timerState.prep){clearInterval(timerState.prep);timerState.prep=null}timerState.running=false;timerState.remaining=0;document.getElementById('exercise-timer').classList.add('hide')}
+
+function onTimerComplete(){try{playEndBeep()}catch(e){}document.getElementById('timer-label').textContent='Concluído';if(!document.getElementById('timer-complete-mark')){const btn=document.createElement('div');btn.style.marginTop='8px';btn.innerHTML='<button id="timer-complete-mark" class="primary">Marcar como feito hoje</button>';document.getElementById('exercise-timer').appendChild(btn);document.getElementById('timer-complete-mark').addEventListener('click',()=>{document.getElementById('done-button').click();btn.remove()})}}
 
 // delegate clicks for start buttons (robust: uses closest and logs errors)
 document.addEventListener('click', e => {
