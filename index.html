@@ -103,6 +103,25 @@
     </section>
   </main>
   <nav class="nav" aria-label="Navegação principal"><button class="active" data-go="home">Hoje</button><button data-go="library">Movimentos</button><button data-go="calendar-view">Calendário</button></nav>
+
+  <!-- Edit Exercise Modal -->
+  <div id="edit-exercise-modal" class="card hide" role="dialog" aria-modal="true" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:92%;max-width:520px;z-index:60">
+    <h2 id="edit-ex-title">Editar exercício</h2>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <label class="small">Nome:<input id="edit-ex-name" style="width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid var(--line)"></label>
+      <label class="small">Descrição curta:<input id="edit-ex-goal" style="width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid var(--line)"></label>
+      <label class="small">Passos (uma por linha):<textarea id="edit-ex-steps" rows="4" style="width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid var(--line)"></textarea></label>
+      <div style="display:flex;gap:12px;align-items:flex-start">
+        <div style="flex:1"><img id="edit-ex-preview" src="assets/placeholder.png" alt="Preview" style="width:100%;height:auto;border-radius:12px;background:#f8f3ea;border:1px solid var(--line)"></div>
+        <div style="width:220px;flex-shrink:0">
+          <input type="file" id="edit-ex-file" accept="image/*" style="width:100%">
+          <p class="small">Tamanho ideal: 800×800 px (PNG/SVG). Recomenda-se ≤200KB. Nome para assets (opcional): <code>ex-{id}.png</code></p>
+          <div style="display:flex;gap:8px;margin-top:8px"><button id="edit-ex-save" class="primary">Salvar</button><button id="edit-ex-cancel" class="secondary">Cancelar</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Firebase configuration (for sync)
     const firebaseConfig = {
@@ -306,6 +325,70 @@ document.getElementById('history')?.addEventListener('click', e=>{
   const del = e.target && e.target.closest && e.target.closest('.delete-day');
   if(del){const date = del.getAttribute('data-date'); if(confirm('Apagar o registro do dia '+date+'? Esta ação não pode ser desfeita.')){let x=data(); if(x.done && x.done[date]){delete x.done[date]; save(x); calendar(); counts(); alert('Registro apagado.')}}}
 });
+
+    // Edit exercise modal functions
+    let editExUploadData = null;
+    function openEditExerciseModal(key, createNew){
+      const modal = document.getElementById('edit-exercise-modal');
+      const title = document.getElementById('edit-ex-title');
+      const name = document.getElementById('edit-ex-name');
+      const goal = document.getElementById('edit-ex-goal');
+      const steps = document.getElementById('edit-ex-steps');
+      const preview = document.getElementById('edit-ex-preview');
+      const file = document.getElementById('edit-ex-file');
+      editExUploadData = null;
+      if(createNew){
+        modal.dataset.key = key;
+        title.textContent = 'Novo exercício';
+        name.value = '';
+        goal.value = '';
+        steps.value = '';
+        preview.src = 'assets/placeholder.png';
+        if(file) file.value = '';
+      } else {
+        const ex = exercises[key] || {};
+        modal.dataset.key = key;
+        title.textContent = ex.name ? 'Editar: ' + ex.name : 'Editar exercício';
+        name.value = ex.name || '';
+        goal.value = ex.goal || '';
+        steps.value = (ex.steps || []).join('\n');
+        preview.src = ex.img || 'assets/placeholder.png';
+        if(file) file.value = '';
+      }
+      modal.classList.remove('hide');
+    }
+    function closeEditExerciseModal(){
+      const modal = document.getElementById('edit-exercise-modal');
+      if(modal) modal.classList.add('hide');
+      editExUploadData = null;
+      const file = document.getElementById('edit-ex-file'); if(file) file.value = '';
+    }
+    document.getElementById('edit-ex-file')?.addEventListener('change', function(e){
+      const f = this.files && this.files[0]; if(!f) return;
+      const reader = new FileReader();
+      reader.onload = ()=>{ editExUploadData = reader.result; const p=document.getElementById('edit-ex-preview'); if(p) p.src = editExUploadData; };
+      reader.readAsDataURL(f);
+    });
+    document.getElementById('edit-ex-save')?.addEventListener('click', function(){
+      const modal = document.getElementById('edit-exercise-modal');
+      const key = modal.dataset.key || ('e-'+Date.now());
+      const name = document.getElementById('edit-ex-name').value.trim();
+      if(!name){ alert('Nome obrigatório'); return; }
+      const goal = document.getElementById('edit-ex-goal').value.trim();
+      const steps = document.getElementById('edit-ex-steps').value.split('\n').map(s=>s.trim()).filter(Boolean);
+      exercises[key] = exercises[key] || {};
+      exercises[key].name = name;
+      exercises[key].goal = goal;
+      exercises[key].steps = steps;
+      if(editExUploadData) exercises[key].img = editExUploadData;
+      saveExercises();
+      closeEditExerciseModal();
+      library();
+      // open saved item in the library list after re-render
+      setTimeout(()=>{ const btn = document.querySelector(`[data-exercise="${key}"]`); if(btn) btn.click(); },50);
+    });
+    document.getElementById('edit-ex-cancel')?.addEventListener('click', ()=>{ closeEditExerciseModal(); });
+
     function library(){
       let list=document.getElementById('library-list'),detail=document.getElementById('library-detail');
       const items = Object.entries(exercises).map(([id,e])=>`<button class="library-card" data-exercise="${id}"><img src="${e.img}" alt="Ilustração de ${e.name}" loading="lazy"><span><b>${e.name}</b><span>${e.goal}</span></span></button>`).join('');
@@ -315,14 +398,11 @@ document.getElementById('history')?.addEventListener('click', e=>{
       // add/edit/delete handlers
       document.getElementById('add-exercise')?.addEventListener('click',()=>{
         const id = 'e-'+Date.now();
-        const name = prompt('Nome do exercício:'); if(!name) return;
-        const goal = prompt('Objetivo / descrição curta:')||'';
-        const steps = (prompt('Passos (separados por ; )','Levante,Respire')||'').split(';').map(s=>s.trim()).filter(Boolean);
-        exercises[id] = {name,goal,steps,img:'assets/placeholder.png',dose:'',variants:{ready:{duration:'30 segundos',dose:''}}}; saveExercises(); library();
+        openEditExerciseModal(id, true);
       });
       document.getElementById('library-list').addEventListener('click', e => {
         const ed = e.target && e.target.closest && e.target.closest('.edit-exercise');
-        if(ed){const k=ed.getAttribute('data-key');const ex=exercises[k];const name=prompt('Nome:',ex.name); if(!name) return; const goal=prompt('Objetivo:',ex.goal)||''; const steps=(prompt('Passos (separados por ; )', (ex.steps||[]).join(';'))||'').split(';').map(s=>s.trim()).filter(Boolean); ex.name=name; ex.goal=goal; ex.steps=steps; saveExercises(); library(); return}
+        if(ed){const k=ed.getAttribute('data-key'); openEditExerciseModal(k,false); return}
         const del = e.target && e.target.closest && e.target.closest('.delete-exercise');
         if(del){const k=del.getAttribute('data-key'); if(confirm('Apagar exercício "'+(exercises[k]?.name||k)+'"? Isso não removerá os dias já marcados como feitos automaticamente.')){delete exercises[k]; saveExercises(); library(); document.getElementById('library-detail').innerHTML='';}}
       });
