@@ -19,6 +19,9 @@
 .comfort .nav{padding:14px;gap:8px}
 @media (min-width:700px){.app{padding-top:32px}}
   </style>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <main class="app">
@@ -66,6 +69,55 @@
   </main>
   <nav class="nav" aria-label="Navegação principal"><button class="active" data-go="home">Hoje</button><button data-go="library">Movimentos</button><button data-go="calendar-view">Calendário</button></nav>
   <script>
+    // Firebase configuration (for sync)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCjgFXJP7aQdbYHgomLEg0oDe_laYQYf3U",
+      authDomain: "bem-estar-da-rosina.firebaseapp.com",
+      projectId: "bem-estar-da-rosina",
+      storageBucket: "bem-estar-da-rosina.firebasestorage.app",
+      messagingSenderId: "226334046618",
+      appId: "1:226334046618:web:2aee1dd975956489f0a223"
+    };
+
+    // Initialize Firebase (compat)
+    if (window.firebase && firebase.initializeApp) {
+      try { firebase.initializeApp(firebaseConfig); } catch (e) { /* already initialized */ }
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+      window.__rosina_uid = null;
+
+      auth.signInAnonymously().catch(()=>{});
+      auth.onAuthStateChanged(user => {
+        if (user) { window.__rosina_uid = user.uid; loadRemote().catch(()=>{}); }
+      });
+
+      async function loadRemote(){
+        if(!window.__rosina_uid) return;
+        try{
+          const doc = await db.collection('users').doc(window.__rosina_uid).get();
+          if(doc.exists){
+            const remote = doc.data() || {};
+            const local = data();
+            // merge done maps and preferences
+            const merged = Object.assign({}, local);
+            merged.done = Object.assign({}, local.done||{}, remote.done||{});
+            if(remote.feeling) merged.feeling = remote.feeling;
+            if(remote.feelingDate) merged.feelingDate = remote.feelingDate;
+            if(remote.fontsize) merged.fontsize = remote.fontsize;
+            if(remote.comfort) merged.comfort = remote.comfort;
+            save(merged);
+          } else {
+            await saveRemote(data());
+          }
+        }catch(e){console.warn('loadRemote',e)}
+      }
+
+      function saveRemote(x){
+        if(!window.__rosina_uid) return;
+        try{ db.collection('users').doc(window.__rosina_uid).set(x, {merge:true}).catch(()=>{}); }catch(e){}
+      }
+    }
+
     const START = new Date(2026,7,1), END = new Date(2026,8,30), KEY = 'rosina-movimento-v1';
     const plan = [
       {title:'Mobilidade sentada',tag:'Sentada e confortável',note:'Um dia leve para ativar pernas e braços com calma.',items:['marcha-sentada','extensao-joelho','bracos']},
@@ -148,7 +200,7 @@
       }
     };
     function localDate(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate())} function key(d){return d.toISOString().slice(0,10)}
-    function data(){try{return JSON.parse(localStorage.getItem(KEY))||{done:{}}}catch{return {done:{}}}} function save(x){localStorage.setItem(KEY,JSON.stringify(x))}
+    function data(){try{return JSON.parse(localStorage.getItem(KEY))||{done:{}}}catch{return {done:{}}}} function save(x){localStorage.setItem(KEY,JSON.stringify(x)); try{ if(window && window.__rosina_uid && typeof saveRemote==='function') saveRemote(x); }catch(e){/* ignore */} }
     function current(){let n=localDate(new Date()); if(n<START)return START;if(n>END)return END;return n} function index(d){return Math.floor((localDate(d)-START)/86400000)}
     function dailyPlan(d){return plan[index(d)%plan.length]}
     function feeling(d){let x=data();return x.feelingDate===key(d)?x.feeling||'ready':'ready'}
