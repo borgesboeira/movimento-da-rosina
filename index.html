@@ -251,8 +251,21 @@ function pauseTimer(){if(!timerState.running) return;clearInterval(timerState.in
 function resetTimer(){if(timerState.interval){clearInterval(timerState.interval);timerState.interval=null}timerState.running=false;timerState.remaining=0;document.getElementById('exercise-timer').classList.add('hide')}
 function onTimerComplete(){document.getElementById('timer-label').textContent='Concluído';if(!document.getElementById('timer-complete-mark')){const btn=document.createElement('div');btn.style.marginTop='8px';btn.innerHTML='<button id="timer-complete-mark" class="primary">Marcar como feito hoje</button>';document.getElementById('exercise-timer').appendChild(btn);document.getElementById('timer-complete-mark').addEventListener('click',()=>{document.getElementById('done-button').click();btn.remove()})}}
 
-// delegate clicks for start buttons
-document.addEventListener('click',e=>{const t=e.target; if(t && t.classList && t.classList.contains('start-exercise-timer')){const d=t.dataset.duration;const label=t.dataset.label||t.textContent; if(!d) return; const secs=parseDurationText(d); if(!secs) return; showTimer(secs,label)}})
+// delegate clicks for start buttons (robust: uses closest and logs errors)
+document.addEventListener('click', e => {
+  try {
+    const btn = e.target && e.target.closest ? e.target.closest('.start-exercise-timer') : null;
+    if (!btn) return;
+    const d = btn.getAttribute('data-duration') || '';
+    const label = btn.getAttribute('data-label') || btn.textContent || 'Temporizador';
+    if (!d) { console.debug('start-exercise-timer: no duration on button', btn); return; }
+    const secs = parseDurationText(d);
+    if (!secs) { console.debug('start-exercise-timer: could not parse duration', d); return; }
+    showTimer(secs, label);
+  } catch (err) {
+    console.error('start-exercise-timer handler error', err);
+  }
+});
 
 // wire timer controls
 document.addEventListener('DOMContentLoaded',()=>{const s=document.getElementById('timer-start'),p=document.getElementById('timer-pause'),r=document.getElementById('timer-reset');if(s) s.addEventListener('click',startTimer); if(p) p.addEventListener('click',pauseTimer); if(r) r.addEventListener('click',resetTimer)});
