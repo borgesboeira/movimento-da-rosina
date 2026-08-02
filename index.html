@@ -74,12 +74,78 @@
       {title:'Pausa e mobilidade',tag:'Dia de recuperação',note:'Hoje é dia de escutar o corpo. Se estiver bem e liberada, faça apenas mobilidade bem suave.',items:['marcha-sentada','bracos']}
     ];
     const exercises = {
-      'marcha-sentada':{name:'Marcha sentada',img:'assets/marcha-sentada.png',goal:'Mobilidade de quadril e ativação suave das pernas.',steps:['Sente-se no meio da cadeira, com costas altas e pés no chão.','Eleve um joelho poucos centímetros e baixe devagar.','Alterne as pernas sem balançar o tronco.'],dose:'Começo seguro: 30 segundos em ritmo bem lento. Descanse e só repita se continuar confortável.'},
-      'extensao-joelho':{name:'Extensão alternada do joelho',img:'assets/extensao-joelho.png',goal:'Ativar a parte da frente da coxa para ajudar em levantar e caminhar.',steps:['Sente-se com os dois pés apoiados.','Estenda uma perna até ficar quase reta, sem travar o joelho.','Pausa breve, retorne e alterne o lado.'],dose:'Começo seguro: 4 a 6 de cada lado, sem pesos nos tornozelos.'},
-      'bracos':{name:'Elevação suave de braços',img:'assets/bracos.png',goal:'Mobilidade de ombros e coordenação, sem sobrecarga.',steps:['Sentada, eleve os braços à frente.','Vá somente até uma altura confortável, no máximo na linha dos ombros.','Baixe lentamente, soltando o ar.'],dose:'Começo seguro: 4 a 6 repetições, sem pesos.'},
-      'marcha-com-apoio':{name:'Caminhada parada com cadeira',img:'assets/marcha-com-apoio.png',goal:'Movimento aeróbico muito leve e estável.',steps:['Fique atrás de uma cadeira firme e segure o encosto de leve.','Eleve um pé de cada vez, bem baixo, como uma marcha.','Mantenha um ritmo que permita conversar com tranquilidade.'],dose:'Começo seguro: 20 a 30 segundos leves. Descanse ao menos 60 segundos; no máximo 2 blocos na primeira semana, se liberado.'},
-      'sentar-levantar':{name:'Sentar e levantar parcial',img:'assets/sentar-levantar.png',goal:'Força funcional para as atividades do dia a dia.',steps:['Use cadeira firme, encostada na parede. Sente-se na ponta, com os pés na largura do quadril.','Incline levemente o tronco à frente e levante devagar, usando os braços da cadeira se precisar.','Sente-se controlando a descida. Pode fazer só metade do caminho.'],dose:'Começo seguro: 3 a 5 repetições, uma única série.'},
-      'calcanhares':{name:'Elevação de calcanhares',img:'assets/calcanhares.png',goal:'Mobilidade de tornozelos e ativação das panturrilhas.',steps:['Fique atrás de uma cadeira, com as mãos leves no encosto.','Levante os dois calcanhares devagar.','Pausa breve na ponta dos pés e desça com controle.'],dose:'Começo seguro: 5 a 8 repetições lentas.'}
+      'marcha-sentada':{
+        name:'Marcha sentada',
+        img:'assets/marcha-sentada.png',
+        goal:'Mobilidade de quadril e ativação suave das pernas.',
+        steps:['Sente-se no meio da cadeira, com costas altas e pés no chão.','Eleve um joelho poucos centímetros e baixe devagar.','Alterne as pernas sem balançar o tronco.'],
+        dose:'Começo seguro: 30 segundos em ritmo bem lento. Descanse e só repita se continuar confortável.',
+        variants:{
+          ready:{duration:'30 segundos',dose:'Começo seguro: 30 segundos em ritmo bem lento.'},
+          gentle:{duration:'20 segundos',dose:'Segurança: 20 segundos em ritmo bem lento.'},
+          pause:{duration:'15 segundos',dose:'Movilidade muito suave: 15 segundos, sem esforço.'}
+        }
+      },
+      'extensao-joelho':{
+        name:'Extensão alternada do joelho',
+        img:'assets/extensao-joelho.png',
+        goal:'Ativar a parte da frente da coxa para ajudar em levantar e caminhar.',
+        steps:['Sente-se com os dois pés apoiados.','Estenda uma perna até ficar quase reta, sem travar o joelho.','Pausa breve, retorne e alterne o lado.'],
+        dose:'Começo seguro: 4 a 6 de cada lado, sem pesos nos tornozelos.',
+        variants:{
+          ready:{reps:'4 a 6 de cada lado',dose:'4 a 6 repetições de cada lado, sem peso.'},
+          gentle:{reps:'2 a 4 de cada lado',dose:'2 a 4 repetições, movimento lento e controlado.'},
+          pause:{reps:'1 a 2 de cada lado',dose:'1 a 2 de cada lado apenas para mobilidade.'}
+        }
+      },
+      'bracos':{
+        name:'Elevação suave de braços',
+        img:'assets/bracos.png',
+        goal:'Mobilidade de ombros e coordenação, sem sobrecarga.',
+        steps:['Sentada, eleve os braços à frente.','Vá somente até uma altura confortável, no máximo na linha dos ombros.','Baixe lentamente, soltando o ar.'],
+        dose:'Começo seguro: 4 a 6 repetições, sem pesos.',
+        variants:{
+          ready:{reps:'4 a 6',dose:'4 a 6 repetições sem pesos.'},
+          gentle:{reps:'3 a 4',dose:'3 a 4 repetições em ritmo suave.'},
+          pause:{reps:'2',dose:'2 repetições só para mobilidade.'}
+        }
+      },
+      'marcha-com-apoio':{
+        name:'Caminhada parada com cadeira',
+        img:'assets/marcha-com-apoio.png',
+        goal:'Movimento aeróbico muito leve e estável.',
+        steps:['Fique atrás de uma cadeira firme e segure o encosto de leve.','Eleve um pé de cada vez, bem baixo, como uma marcha.','Mantenha um ritmo que permita conversar com tranquilidade.'],
+        dose:'Começo seguro: 20 a 30 segundos leves. Descanse ao menos 60 segundos; no máximo 2 blocos na primeira semana, se liberado.',
+        variants:{
+          ready:{duration:'20 a 30 segundos',dose:'20 a 30 segundos com ritmo tranquilo.'},
+          gentle:{duration:'15 a 20 segundos',dose:'15 a 20 segundos, ritmo bem suave.'},
+          pause:{duration:'10 a 15 segundos',dose:'10 a 15 segundos apenas para mobilidade.'}
+        }
+      },
+      'sentar-levantar':{
+        name:'Sentar e levantar parcial',
+        img:'assets/sentar-levantar.png',
+        goal:'Força funcional para as atividades do dia a dia.',
+        steps:['Use cadeira firme, encostada na parede. Sente-se na ponta, com os pés na largura do quadril.','Incline levemente o tronco à frente e levante devagar, usando os braços da cadeira se precisar.','Sente-se controlando a descida. Pode fazer só metade do caminho.'],
+        dose:'Começo seguro: 3 a 5 repetições, uma única série.',
+        variants:{
+          ready:{reps:'3 a 5',dose:'3 a 5 repetições com controle.'},
+          gentle:{reps:'2 a 3',dose:'2 a 3 repetições, sem forçar.'},
+          pause:{reps:'1 a 2',dose:'1 a 2 repetições apenas se se sentir segura.'}
+        }
+      },
+      'calcanhares':{
+        name:'Elevação de calcanhares',
+        img:'assets/calcanhares.png',
+        goal:'Mobilidade de tornozelos e ativação das panturrilhas.',
+        steps:['Fique atrás de uma cadeira, com as mãos leves no encosto.','Levante os dois calcanhares devagar.','Pausa breve na ponta dos pés e desça com controle.'],
+        dose:'Começo seguro: 5 a 8 repetições lentas.',
+        variants:{
+          ready:{reps:'5 a 8',dose:'5 a 8 repetições lentas.'},
+          gentle:{reps:'3 a 5',dose:'3 a 5 repetições suaves.'},
+          pause:{reps:'2 a 3',dose:'2 a 3 repetições apenas para mobilidade.'}
+        }
+      }
     };
     function localDate(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate())} function key(d){return d.toISOString().slice(0,10)}
     function data(){try{return JSON.parse(localStorage.getItem(KEY))||{done:{}}}catch{return {done:{}}}} function save(x){localStorage.setItem(KEY,JSON.stringify(x))}
@@ -91,8 +157,8 @@
     function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===id));document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.go===id));if(id==='library')library();window.scrollTo({top:0,behavior:'smooth'})}
     function counts(){const done=Object.keys(data().done);document.getElementById('done-count').textContent=done.length;let now=current(),monday=new Date(now);monday.setDate(now.getDate()-((now.getDay()+6)%7));document.getElementById('week-count').textContent=done.filter(x=>new Date(x+'T12:00:00')>=monday).length}
     function renderCheckin(){let f=feeling(current());document.querySelectorAll('[data-feeling]').forEach(b=>b.classList.toggle('active',b.dataset.feeling===f))}
-    function home(){let d=current(), p=selectedPlan(d), done=!!data().done[key(d)], future=new Date()>END, paused=feeling(d)==='pause';document.getElementById('today-card').innerHTML=future?`<div class="today-date">30 de setembro concluído</div><div class="today-title">Que bonito, Rosina.</div><p class="muted">O ciclo de agosto e setembro terminou. Veja o seu calendário e leve as conquistas para a próxima consulta.</p><button class="primary" id="go-history">Ver meu histórico</button>`:`<div class="today-date">${formatDate(d)}</div><div class="today-title">${done?'Dia concluído ✓':paused?'Dia de pausa':p.title}</div><p>${done?'Parabéns por cuidar de você hoje.':paused?'Escutar o corpo também é cuidado. Veja apenas movimentos muito leves se estiver liberada.':'Hoje: '+p.tag+'.'}</p><button class="primary" id="start">${done?'Ver exercícios':paused?'Ver mobilidade leve':'Começar meu exercício'}</button>`;document.getElementById(done||future?'go-history':'start').addEventListener('click',()=>show(done||future?'calendar-view':'session'));renderCheckin();counts()}
-    function session(){let d=current(),p=selectedPlan(d),done=!!data().done[key(d)];document.getElementById('session-date').textContent=formatDate(d);document.getElementById('session-title').textContent=p.title;document.getElementById('session-note').textContent=p.note;document.getElementById('session-content').innerHTML=p.items.map(id=>{let e=exercises[id];return `<article class="card"><span class="exercise-tag">${p.tag}</span><h2>${e.name}</h2><p class="small">${e.goal}</p><img class="exercise-img" src="${e.img}" alt="Ilustração de ${e.name}" loading="lazy"><ol class="steps">${e.steps.map(s=>`<li>${s}</li>`).join('')}</ol><div class="dose">${e.dose}</div><div class="stop"><b>Pare:</b> se vier dor/pressão no peito, tontura, palpitação, falta de ar fora do habitual, dor ou mal-estar.</div></article>`}).join('');let b=document.getElementById('done-button');b.textContent=done?'Feito hoje ✓':'Marcar como feito hoje';b.disabled=done;b.onclick=()=>{let x=data();x.done[key(d)]={plan:p.title,at:new Date().toISOString()};save(x);b.textContent='Feito hoje ✓';b.disabled=true;counts();setTimeout(()=>{show('home');home()},500)}}
+    function home(){let d=current(), p=selectedPlan(d), done=!!data().done[key(d)], future=new Date()>END, paused=feeling(d)==='pause', mode=feeling(d); const modeLabel = mode==='gentle'?'Leve':mode==='pause'?'Pausa':'Normal'; document.getElementById('today-card').innerHTML = future?`<div class="today-date">30 de setembro concluído</div><div class="today-title">Que bonito, Rosina.</div><p class="muted">O ciclo de agosto e setembro terminou. Veja o seu calendário e leve as conquistas para a próxima consulta.</p><button class="primary" id="go-history">Ver meu histórico</button>`:`<div class="today-date">${formatDate(d)}</div><div style="display:flex;align-items:center;justify-content:space-between"><div><div class="today-title">${done?'Dia concluído ✓':paused?'Dia de pausa':p.title}</div><p>${done?'Parabéns por cuidar de você hoje.':paused?'Escutar o corpo também é cuidado. Veja apenas movimentos muito leves se estiver liberada.':'Hoje: '+p.tag+'.'}</p></div><div style="margin-left:12px"><span class="badge" style="font-size:.86rem;padding:6px 10px">${modeLabel}</span></div></div><button class="primary" id="start">${done?'Ver exercícios':paused?'Ver mobilidade leve':'Começar meu exercício'}</button>`;document.getElementById(done||future?'go-history':'start').addEventListener('click',()=>show(done||future?'calendar-view':'session'));renderCheckin();counts()}
+    function session(){let d=current(),p=selectedPlan(d),done=!!data().done[key(d)],mode=feeling(d);document.getElementById('session-date').textContent=formatDate(d);document.getElementById('session-title').textContent=p.title;document.getElementById('session-note').textContent=p.note;let prev=document.getElementById('session-level');if(prev)prev.remove();const modeLabel=mode==='gentle'?'Leve':mode==='pause'?'Pausa':'Normal';document.getElementById('session-date').insertAdjacentHTML('afterend',`<div class="small" id="session-level" style="margin-top:6px">Nível: <b>${modeLabel}</b></div>`);document.getElementById('session-content').innerHTML=p.items.map(id=>{let e=exercises[id];let variant=e.variants&&e.variants[mode]?Object.assign({},e,e.variants[mode]):e;let doseText=variant.dose||'';if(variant.reps){doseText=`Repetições sugeridas: ${variant.reps}. ${doseText}`}if(variant.duration){doseText=`Duração sugerida: ${variant.duration}. ${doseText}`}return `<article class="card"><span class="exercise-tag">${p.tag}</span><h2>${variant.name||e.name}</h2><p class="small">${variant.goal||e.goal}</p><img class="exercise-img" src="${variant.img||e.img}" alt="Ilustração de ${variant.name||e.name}" loading="lazy"><ol class="steps">${(variant.steps||e.steps).map(s=>`<li>${s}</li>`).join('')}</ol><div class="dose">${doseText}</div><div class="stop"><b>Pare:</b> se vier dor/pressão no peito, tontura, palpitação, falta de ar fora do habitual, dor ou mal-estar.</div></article>`}).join('');let b=document.getElementById('done-button');b.textContent=done?'Feito hoje ✓':'Marcar como feito hoje';b.disabled=done;b.onclick=()=>{let x=data();x.done[key(d)]={plan:p.title,at:new Date().toISOString(),level:mode};save(x);b.textContent='Feito hoje ✓';b.disabled=true;counts();setTimeout(()=>{show('home');home()},500)}}
     function calendarMonth(year,month){let d=data(), first=new Date(year,month,1),last=new Date(year,month+1,0),today=key(current()),html=`<section class="card"><div class="calendar-head"><span class="month-title">${first.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</span></div><div class="calendar"><span class="weekday">D</span><span class="weekday">S</span><span class="weekday">T</span><span class="weekday">Q</span><span class="weekday">Q</span><span class="weekday">S</span><span class="weekday">S</span>`;for(let i=0;i<first.getDay();i++)html+='<span></span>';for(let day=1;day<=last.getDate();day++){let date=new Date(year,month,day),k=key(date),past=date<current(),cls='day planned';if(d.done[k])cls+=' done';else if(past)cls+=' missed';else if(date>current())cls+=' future';if(k===today)cls+=' today';html+=`<button class="${cls}" aria-label="${day} de ${first.toLocaleDateString('pt-BR',{month:'long'})}${d.done[k]?', concluído':''}">${day}</button>`}return html+'</div><div class="legend"><span><i class="dot" style="background:#0f766e"></i>feito</span><span><i class="dot" style="background:#eef7f6;border:1px solid #b4d8d3"></i>planejado</span><span><i class="dot" style="background:#fff0ed"></i>não marcado</span></div></section>'}
     function calendar(){document.getElementById('calendars').innerHTML=calendarMonth(2026,7)+calendarMonth(2026,8);let done=Object.entries(data().done).sort((a,b)=>b[0].localeCompare(a[0]));document.getElementById('calendar-summary').textContent=`${done.length} dia${done.length===1?'':'s'} de cuidado registrado${done.length===1?'':'s'} neste ciclo.`;document.getElementById('history').innerHTML=done.length?done.slice(0,10).map(([date,v])=>`<div class="history-row"><div><b>${new Date(date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</b><div class="small">${v.plan}</div></div><span class="badge">Feito ✓</span></div>`).join(''):'<div class="empty">Quando você marcar um exercício como feito, ele aparecerá aqui.</div>'}
     function library(){let list=document.getElementById('library-list'),detail=document.getElementById('library-detail');list.innerHTML=Object.entries(exercises).map(([id,e])=>`<button class="library-card" data-exercise="${id}"><img src="${e.img}" alt="Ilustração de ${e.name}" loading="lazy"><span><b>${e.name}</b><span>${e.goal}</span></span></button>`).join('');function open(id){let e=exercises[id];detail.innerHTML=`<article class="card library-detail"><span class="exercise-tag">Como fazer</span><h2>${e.name}</h2><img class="exercise-img" src="${e.img}" alt="Ilustração de ${e.name}" loading="lazy"><p class="small">${e.goal}</p><ol class="steps">${e.steps.map(s=>`<li>${s}</li>`).join('')}</ol><div class="dose">${e.dose}</div></article>`;detail.scrollIntoView({behavior:'smooth',block:'nearest'})}list.querySelectorAll('[data-exercise]').forEach(b=>b.onclick=()=>open(b.dataset.exercise));open('marcha-sentada')}
