@@ -400,12 +400,15 @@ document.getElementById('history')?.addEventListener('click', e=>{
         const id = 'e-'+Date.now();
         openEditExerciseModal(id, true);
       });
-      document.getElementById('library-list').addEventListener('click', e => {
+
+      function handleLibraryClick(e){
         const ed = e.target && e.target.closest && e.target.closest('.edit-exercise');
         if(ed){const k=ed.getAttribute('data-key'); openEditExerciseModal(k,false); return}
         const del = e.target && e.target.closest && e.target.closest('.delete-exercise');
         if(del){const k=del.getAttribute('data-key'); if(confirm('Apagar exercício "'+(exercises[k]?.name||k)+'"? Isso não removerá os dias já marcados como feitos automaticamente.')){delete exercises[k]; saveExercises(); library(); document.getElementById('library-detail').innerHTML='';}}
-      });
+      }
+      document.getElementById('library-list').addEventListener('click', handleLibraryClick);
+      document.getElementById('library-detail').addEventListener('click', handleLibraryClick);
       open('marcha-sentada')
     }
     document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{show(b.dataset.go);if(b.dataset.go==='home')home();if(b.dataset.go==='session')session();if(b.dataset.go==='calendar-view')calendar()}));document.getElementById('open-calendar').onclick=()=>{show('calendar-view');calendar()};document.querySelectorAll('[data-feeling]').forEach(b=>b.onclick=()=>{let x=data();x.feeling=b.dataset.feeling;x.feelingDate=key(current());save(x);home();session()});
