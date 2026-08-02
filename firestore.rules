@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Each user stores their app data under /users/{uid}
+    match /users/{userId} {
+      // Allow read only to the authenticated user matching the doc id
+      allow get, list: if request.auth != null && request.auth.uid == userId;
+
+      // Allow create and update only if the user is authenticated and owns the doc
+      // Also validate that only expected keys are written and basic types match
+      function validPayload() {
+        return (
+          // only allow these top-level keys (extra keys are rejected)
+          (request.resource.data.keys().hasOnly(['done','feeling','feelingDate','fontsize','comfort']) || request.resource.data.keys().size() == 0)
+          && (request.resource.data.fontsize == null || request.resource.data.fontsize is int)
+          && (request.resource.data.comfort == null || request.resource.data.comfort is bool)
+          && (request.resource.data.feeling == null || request.resource.data.feeling is string)
+          && (request.resource.data.feelingDate == null || request.resource.data.feelingDate is string)
+          && (request.resource.data.done == null || request.resource.data.done is map)
+        );
+      }
+
+      allow create, update, delete: if request.auth != null
+        && request.auth.uid == userId
+        && validPayload();
+    }
+
+    // Optionally, disallow all others by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
