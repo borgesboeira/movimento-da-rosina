@@ -39,6 +39,7 @@
         <button id="decrease-text" aria-label="Diminuir texto">A-</button>
         <button id="increase-text" aria-label="Aumentar texto">A+</button>
         <button id="comfort-mode" aria-pressed="false" aria-label="Modo confortável">Conforto</button>
+        <button id="sound-mode" aria-label="Modo som">Som</button>
       </div>
       <span class="heart" aria-hidden="true">♥</span>
     </header>
@@ -132,9 +133,11 @@
           if(doc.exists){
             const remote = doc.data() || {};
             const local = data();
-            // merge done maps and preferences
+            // merge done maps and preferences, and user recipes/exercises
             const merged = Object.assign({}, local);
             merged.done = Object.assign({}, local.done||{}, remote.done||{});
+            merged.recipes = Object.assign({}, local.recipes||{}, remote.recipes||{});
+            merged.exercises = Object.assign({}, local.exercises||{}, remote.exercises||{});
             if(remote.feeling) merged.feeling = remote.feeling;
             if(remote.feelingDate) merged.feelingDate = remote.feelingDate;
             if(remote.fontsize) merged.fontsize = remote.fontsize;
@@ -159,7 +162,7 @@
       {title:'Força funcional leve',tag:'Cadeira firme encostada na parede',note:'Faça somente se este movimento estiver liberado pela equipe de saúde.',items:['sentar-levantar','extensao-joelho']},
       {title:'Pausa e mobilidade',tag:'Dia de recuperação',note:'Hoje é dia de escutar o corpo. Se estiver bem e liberada, faça apenas mobilidade bem suave.',items:['marcha-sentada','bracos']}
     ];
-    const exercises = {
+    const DEFAULT_EXERCISES = {
       'marcha-sentada':{
         name:'Marcha sentada',
         img:'assets/marcha-sentada.png',
@@ -233,11 +236,13 @@
         }
       }
     };
+    let exercises = Object.assign({}, DEFAULT_EXERCISES, data().exercises || {});
+    function saveExercises(){const s=data();s.exercises = exercises; save(s);}
 
     // Additional low-impact exercises tailored for cardiopathy and overweight (reuse existing image style)
     exercises['respiracao-leve'] = {
       name: 'Respiração guiada sentada',
-      img: 'assets/bracos.png',
+      img: 'assets/respiracao-leve.svg',
       goal: 'Respiração diafragmática para controle cardíaco e relaxamento.',
       steps: ['Sente-se com costas altas, mãos sobre o abdômen.','Inspire contando até 4, segure 1 segundo, expire contando até 6.','Repita por 1 a 2 minutos, em ritmo confortável.'],
       dose: '1 a 2 minutos de respiração guiada, várias vezes ao dia se necessário.',
@@ -249,7 +254,7 @@
     };
     exercises['alcance-sentada'] = {
       name: 'Alcance sentado leve',
-      img: 'assets/marcha-sentada.png',
+      img: 'assets/alcance-sentada.svg',
       goal: 'Melhora mobilidade do tronco/ombros sem carga cardiovascular excessiva.',
       steps: ['Sente-se com postura neutra.','Alcance com uma mão na frente até a altura confortável e retorne.','Repita alternando os lados, em ritmo suave.'],
       dose: '6 a 8 repetições por lado em ritmo confortável.',
@@ -261,7 +266,7 @@
     };
     exercises['equilibrio-parado'] = {
       name: 'Equilíbrio com apoio',
-      img: 'assets/calcanhares.png',
+      img: 'assets/equilibrio-parado.svg',
       goal: 'Treino de equilíbrio com apoio da cadeira para segurança.',
       steps: ['Fique atrás da cadeira e segure o encosto.','Levante um pé alguns centímetros, mantenha por 2 segundos e troque.','Faça em ritmo que permita conversar.'],
       dose: '30 segundos a 1 minuto total, dividido em blocos.',
@@ -273,7 +278,8 @@
     };
 
     function localDate(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate())} function key(d){return d.toISOString().slice(0,10)}
-    function data(){try{return JSON.parse(localStorage.getItem(KEY))||{done:{}}}catch{return {done:{}}}} function save(x){localStorage.setItem(KEY,JSON.stringify(x)); try{ if(window && window.__rosina_uid && typeof saveRemote==='function') saveRemote(x); }catch(e){/* ignore */} }
+    function data(){try{const x=JSON.parse(localStorage.getItem(KEY))||{};return Object.assign({done:{},recipes:{},exercises:{},feeling:'ready',feelingDate:'',fontsize:16,comfort:false}, x);}catch{return {done:{},recipes:{},exercises:{},feeling:'ready',feelingDate:'',fontsize:16,comfort:false}}}
+    function save(x){localStorage.setItem(KEY,JSON.stringify(x)); try{ if(window && window.__rosina_uid && typeof saveRemote==='function') saveRemote(x); }catch(e){/* ignore */} }
     function current(){let n=localDate(new Date()); if(n<START)return START;if(n>END)return END;return n} function index(d){return Math.floor((localDate(d)-START)/86400000)}
     function dailyPlan(d){return plan[index(d)%plan.length]}
     function feeling(d){let x=data();return x.feelingDate===key(d)?x.feeling||'ready':'ready'}
@@ -285,23 +291,66 @@
     function home(){let d=current(), p=selectedPlan(d), done=!!data().done[key(d)], future=new Date()>END, paused=feeling(d)==='pause', mode=feeling(d); const modeLabel = mode==='gentle'?'Leve':mode==='pause'?'Pausa':'Normal'; document.getElementById('today-card').innerHTML = future?`<div class="today-date">30 de setembro concluído</div><div class="today-title">Que bonito, Rosina.</div><p class="muted">O ciclo de agosto e setembro terminou. Veja o seu calendário e leve as conquistas para a próxima consulta.</p><button class="primary" id="go-history">Ver meu histórico</button>`:`<div class="today-date">${formatDate(d)}</div><div style="display:flex;align-items:center;justify-content:space-between"><div><div class="today-title">${done?'Dia concluído ✓':paused?'Dia de pausa':p.title}</div><p>${done?'Parabéns por cuidar de você hoje.':paused?'Escutar o corpo também é cuidado. Veja apenas movimentos muito leves se estiver liberada.':'Hoje: '+p.tag+'.'}</p></div><div style="margin-left:12px"><span class="badge" style="font-size:.86rem;padding:6px 10px">${modeLabel}</span></div></div><button class="primary" id="start">${done?'Ver exercícios':paused?'Ver mobilidade leve':'Começar meu exercício'}</button>`;document.getElementById(done||future?'go-history':'start').addEventListener('click',()=>show(done||future?'calendar-view':'session'));renderCheckin();counts()}
     function session(){let d=current(),p=selectedPlan(d),done=!!data().done[key(d)],mode=feeling(d);document.getElementById('session-date').textContent=formatDate(d);document.getElementById('session-title').textContent=p.title;document.getElementById('session-note').textContent=p.note;let prev=document.getElementById('session-level');if(prev)prev.remove();const modeLabel=mode==='gentle'?'Leve':mode==='pause'?'Pausa':'Normal';document.getElementById('session-date').insertAdjacentHTML('afterend',`<div class="small" id="session-level" style="margin-top:6px">Nível: <b>${modeLabel}</b></div>`);document.getElementById('session-content').innerHTML=p.items.map(id=>{let e=exercises[id];let variant=e.variants&&e.variants[mode]?Object.assign({},e,e.variants[mode]):e;let doseText=variant.dose||'';if(variant.reps){doseText=`Repetições sugeridas: ${variant.reps}. ${doseText}`}if(variant.duration){doseText=`Duração sugerida: ${variant.duration}. ${doseText}`}return `<article class="card"><span class="exercise-tag">${p.tag}</span><h2>${variant.name||e.name}</h2><p class="small">${variant.goal||e.goal}</p><img class="exercise-img" src="${variant.img||e.img}" alt="Ilustração de ${variant.name||e.name}" loading="lazy"><ol class="steps">${(variant.steps||e.steps).map(s=>`<li>${s}</li>`).join('')}</ol><div class="dose">${doseText}</div><div style="margin-top:10px"><button class="secondary start-exercise-timer" data-duration="${variant.duration||''}" data-label="${variant.name||e.name}">Iniciar temporizador</button></div><div class="stop"><b>Pare:</b> se vier dor/pressão no peito, tontura, palpitação, falta de ar fora do habitual, dor ou mal-estar.</div></article>`}).join('');let b=document.getElementById('done-button');b.textContent=done?'Feito hoje ✓':'Marcar como feito hoje';b.disabled=done;b.onclick=()=>{let x=data();x.done[key(d)]={plan:p.title,at:new Date().toISOString(),level:mode};save(x);b.textContent='Feito hoje ✓';b.disabled=true;counts();setTimeout(()=>{show('home');home()},500)}}
     function calendarMonth(year,month){let d=data(), first=new Date(year,month,1),last=new Date(year,month+1,0),today=key(current()),html=`<section class="card"><div class="calendar-head"><span class="month-title">${first.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}</span></div><div class="calendar"><span class="weekday">D</span><span class="weekday">S</span><span class="weekday">T</span><span class="weekday">Q</span><span class="weekday">Q</span><span class="weekday">S</span><span class="weekday">S</span>`;for(let i=0;i<first.getDay();i++)html+='<span></span>';for(let day=1;day<=last.getDate();day++){let date=new Date(year,month,day),k=key(date),past=date<current(),cls='day planned';if(d.done[k])cls+=' done';else if(past)cls+=' missed';else if(date>current())cls+=' future';if(k===today)cls+=' today';html+=`<button class="${cls}" aria-label="${day} de ${first.toLocaleDateString('pt-BR',{month:'long'})}${d.done[k]?', concluído':''}">${day}</button>`}return html+'</div><div class="legend"><span><i class="dot" style="background:#0f766e"></i>feito</span><span><i class="dot" style="background:#eef7f6;border:1px solid #b4d8d3"></i>planejado</span><span><i class="dot" style="background:#fff0ed"></i>não marcado</span></div></section>'}
-    function calendar(){document.getElementById('calendars').innerHTML=calendarMonth(2026,7)+calendarMonth(2026,8);let done=Object.entries(data().done).sort((a,b)=>b[0].localeCompare(a[0]));document.getElementById('calendar-summary').textContent=`${done.length} dia${done.length===1?'':'s'} de cuidado registrado${done.length===1?'':'s'} neste ciclo.`;document.getElementById('history').innerHTML=done.length?done.slice(0,10).map(([date,v])=>`<div class="history-row"><div><b>${new Date(date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</b><div class="small">${v.plan}</div></div><span class="badge">Feito ✓</span></div>`).join(''):'<div class="empty">Quando você marcar um exercício como feito, ele aparecerá aqui.</div>'}
-    function library(){let list=document.getElementById('library-list'),detail=document.getElementById('library-detail');list.innerHTML=Object.entries(exercises).map(([id,e])=>`<button class="library-card" data-exercise="${id}"><img src="${e.img}" alt="Ilustração de ${e.name}" loading="lazy"><span><b>${e.name}</b><span>${e.goal}</span></span></button>`).join('');function open(id){let e=exercises[id];detail.innerHTML=`<article class="card library-detail"><span class="exercise-tag">Como fazer</span><h2>${e.name}</h2><img class="exercise-img" src="${e.img}" alt="Ilustração de ${e.name}" loading="lazy"><p class="small">${e.goal}</p><ol class="steps">${e.steps.map(s=>`<li>${s}</li>`).join('')}</ol><div class="dose">${e.dose}</div></article>`;detail.scrollIntoView({behavior:'smooth',block:'nearest'})}list.querySelectorAll('[data-exercise]').forEach(b=>b.onclick=()=>open(b.dataset.exercise));open('marcha-sentada')}
+    function calendar(){
+  document.getElementById('calendars').innerHTML=calendarMonth(2026,7)+calendarMonth(2026,8);
+  let done=Object.entries(data().done).sort((a,b)=>b[0].localeCompare(a[0]));
+  document.getElementById('calendar-summary').textContent=`${done.length} dia${done.length===1?'':'s'} de cuidado registrado${done.length===1?'':'s'} neste ciclo.`;
+  const historyEl = document.getElementById('history');
+  if(!done.length){historyEl.innerHTML = '<div class="empty">Quando você marcar um exercício como feito, ele aparecerá aqui.</div>';
+  } else {
+    historyEl.innerHTML = done.slice(0,10).map(([date,v])=>`<div class="history-row" data-date="${date}"><div><b>${new Date(date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}</b><div class="small">${v.plan}</div></div><div style="display:flex;gap:8px;align-items:center"><span class="badge">Feito ✓</span><button class="secondary delete-day" data-date="${date}">Apagar</button></div></div>`).join('');
+  }
+}
+// handle delete day requests
+document.getElementById('history')?.addEventListener('click', e=>{
+  const del = e.target && e.target.closest && e.target.closest('.delete-day');
+  if(del){const date = del.getAttribute('data-date'); if(confirm('Apagar o registro do dia '+date+'? Esta ação não pode ser desfeita.')){let x=data(); if(x.done && x.done[date]){delete x.done[date]; save(x); calendar(); counts(); alert('Registro apagado.')}}}
+});
+    function library(){
+      let list=document.getElementById('library-list'),detail=document.getElementById('library-detail');
+      const items = Object.entries(exercises).map(([id,e])=>`<button class="library-card" data-exercise="${id}"><img src="${e.img}" alt="Ilustração de ${e.name}" loading="lazy"><span><b>${e.name}</b><span>${e.goal}</span></span></button>`).join('');
+      list.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b>Movimentos</b><div><button id="add-exercise" class="secondary">Adicionar</button></div></div>` + (items || '<div class="empty">Sem movimentos</div>');
+      function open(id){let e=exercises[id];detail.innerHTML=`<article class="card library-detail"><div style="display:flex;justify-content:space-between;align-items:center"><span class="exercise-tag">Como fazer</span><div><button class="secondary edit-exercise" data-key="${id}">Editar</button><button class="secondary delete-exercise" data-key="${id}">Apagar</button></div></div><h2>${e.name}</h2><img class="exercise-img" src="${e.img}" alt="Ilustração de ${e.name}" loading="lazy"><p class="small">${e.goal}</p><ol class="steps">${e.steps.map(s=>`<li>${s}</li>`).join('')}</ol><div class="dose">${e.dose||''}</div></article>`;detail.scrollIntoView({behavior:'smooth',block:'nearest'})}
+      list.querySelectorAll('[data-exercise]').forEach(b=>b.onclick=()=>open(b.dataset.exercise));
+      // add/edit/delete handlers
+      document.getElementById('add-exercise')?.addEventListener('click',()=>{
+        const id = 'e-'+Date.now();
+        const name = prompt('Nome do exercício:'); if(!name) return;
+        const goal = prompt('Objetivo / descrição curta:')||'';
+        const steps = (prompt('Passos (separados por ; )','Levante,Respire')||'').split(';').map(s=>s.trim()).filter(Boolean);
+        exercises[id] = {name,goal,steps,img:'assets/placeholder.png',dose:'',variants:{ready:{duration:'30 segundos',dose:''}}}; saveExercises(); library();
+      });
+      document.getElementById('library-list').addEventListener('click', e => {
+        const ed = e.target && e.target.closest && e.target.closest('.edit-exercise');
+        if(ed){const k=ed.getAttribute('data-key');const ex=exercises[k];const name=prompt('Nome:',ex.name); if(!name) return; const goal=prompt('Objetivo:',ex.goal)||''; const steps=(prompt('Passos (separados por ; )', (ex.steps||[]).join(';'))||'').split(';').map(s=>s.trim()).filter(Boolean); ex.name=name; ex.goal=goal; ex.steps=steps; saveExercises(); library(); return}
+        const del = e.target && e.target.closest && e.target.closest('.delete-exercise');
+        if(del){const k=del.getAttribute('data-key'); if(confirm('Apagar exercício "'+(exercises[k]?.name||k)+'"? Isso não removerá os dias já marcados como feitos automaticamente.')){delete exercises[k]; saveExercises(); library(); document.getElementById('library-detail').innerHTML='';}}
+      });
+      open('marcha-sentada')
+    }
     document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{show(b.dataset.go);if(b.dataset.go==='home')home();if(b.dataset.go==='session')session();if(b.dataset.go==='calendar-view')calendar()}));document.getElementById('open-calendar').onclick=()=>{show('calendar-view');calendar()};document.querySelectorAll('[data-feeling]').forEach(b=>b.onclick=()=>{let x=data();x.feeling=b.dataset.feeling;x.feelingDate=key(current());save(x);home();session()});
     const inc = document.getElementById('increase-text');
 const dec = document.getElementById('decrease-text');
 const comfortBtn = document.getElementById('comfort-mode');
+const soundBtn = document.getElementById('sound-mode');
 function setBaseSize(px){document.documentElement.style.setProperty('--base-font-size', px+'px');localStorage.setItem(KEY+'-fontsize',px)}
 function loadSize(){let v=parseInt(localStorage.getItem(KEY+'-fontsize'))||16;setBaseSize(v)}
 inc?.addEventListener('click',()=>{let v=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--base-font-size'))||16;setBaseSize(Math.min(26,v+1))});
 dec?.addEventListener('click',()=>{let v=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--base-font-size'))||16;setBaseSize(Math.max(14,v-1))});
 comfortBtn?.addEventListener('click',()=>{const pressed=comfortBtn.getAttribute('aria-pressed')==='true';comfortBtn.setAttribute('aria-pressed',(!pressed).toString());document.body.classList.toggle('comfort',!pressed);localStorage.setItem(KEY+'-comfort',(!pressed).toString())});
 function loadComfort(){let c=localStorage.getItem(KEY+'-comfort')==='true';if(comfortBtn){comfortBtn.setAttribute('aria-pressed',c.toString());if(c)document.body.classList.add('comfort')}}
+
+// Sound mode: cycle through ['on','soft','loud','off']
+function getSoundMode(){return localStorage.getItem(KEY+'-sound')||'on'}
+function setSoundMode(m){localStorage.setItem(KEY+'-sound',m); if(soundBtn) soundBtn.textContent = m==='off' ? 'Som: Off' : m==='soft' ? 'Som: Suave' : m==='loud' ? 'Som: Alto' : 'Som: Padrão'}
+function getSoundMultiplier(){const m=getSoundMode(); if(m==='off') return 0; if(m==='soft') return 0.5; if(m==='loud') return 1.5; return 1}
+if(soundBtn){soundBtn.addEventListener('click',()=>{const modes=['on','soft','loud','off'];const next=modes[(modes.indexOf(getSoundMode())+1)%modes.length];setSoundMode(next)})}
+setSoundMode(getSoundMode())
 // Timer state and helpers
 const timerState={interval:null,remaining:0,running:false};
 function parseDurationText(s){if(!s) return null; const t=(s||'').replace(/[^0-9a-zA-Z ]+/g,' '); const nums=t.match(/\d+/g); if(!nums) return null; const n=parseInt(nums[0],10); if(/min/i.test(s)) return n*60; return n;}
 function formatTime(secs){const m=Math.floor(secs/60);const s=secs%60;return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`}
-function playTone(freq,duration,vol){try{const C=new (window.AudioContext||window.webkitAudioContext)();const o=C.createOscillator();const g=C.createGain();o.type='sine';o.frequency.value=freq;g.gain.setValueAtTime(0.0001,C.currentTime);o.connect(g);g.connect(C.destination);o.start();g.gain.linearRampToValueAtTime(Math.max(0.001,vol),C.currentTime+0.01);g.gain.linearRampToValueAtTime(0.0001,C.currentTime+duration/1000);setTimeout(()=>{try{o.stop();C.close();}catch(e){}},duration+60);}catch(e){console.warn('tone',e)}}
+function playTone(freq,duration,vol){try{const mult=getSoundMultiplier();if(mult===0)return;const C=new (window.AudioContext||window.webkitAudioContext)();const o=C.createOscillator();const g=C.createGain();o.type='sine';o.frequency.value=freq;g.gain.setValueAtTime(0.0001,C.currentTime);o.connect(g);g.connect(C.destination);o.start();const target= Math.max(0.001, (vol||0.1) * mult);g.gain.linearRampToValueAtTime(target,C.currentTime+0.01);g.gain.linearRampToValueAtTime(0.0001,C.currentTime+duration/1000);setTimeout(()=>{try{o.stop();C.close();}catch(e){}},duration+60);}catch(e){console.warn('tone',e)}}
 
 function playPrepBeep(){playTone(1200,100,0.25)}
 function playWarningBeep(){playTone(900,120,0.35);setTimeout(()=>playTone(900,120,0.25),160)}
@@ -390,14 +439,40 @@ show('welcome');
 home();session();calendar();library();
 
 // Recipes rendering
-const recipes = {
+const DEFAULT_RECIPES = {
   'aveia-fruta':{title:'Aveia com frutas e iogurte',img:'',desc:'Café da manhã nutritivo com fibras e baixo teor de gordura.',ingredients:['1/2 xícara de aveia','1 copo de iogurte natural desnatado','1/2 banana fatiada','1 colher de sopa de semente de chia'],steps:['Misture aveia e iogurte.','Adicione fruta fatiada e chia.','Sirva frio.']},
   'sopa-legumes':{title:'Sopa leve de legumes',img:'',desc:'Sopa com baixo teor de sódio e rica em fibras.',ingredients:['1 batata doce pequena','1 cenoura','1 abobrinha','1/2 cebola','caldo de legumes caseiro'],steps:['Pique os legumes.','Cozinhe em caldo até macio.','Bata no liquidificador se preferir textura cremosa.']}
 };
-function renderRecipes(){const list=document.getElementById('recipes-list');list.innerHTML=Object.entries(recipes).map(([k,r])=>`<article class="card"><h2>${r.title}</h2><p class="small">${r.desc}</p><b>Ingredientes</b><ul>${r.ingredients.map(i=>`<li>${i}</li>`).join('')}</ul><b>Modo</b><ol>${r.steps.map(s=>`<li>${s}</li>`).join('')}</ol></article>`).join('')}
+let recipes = Object.assign({}, DEFAULT_RECIPES, data().recipes || {});
+function saveRecipes(){const s=data();s.recipes = recipes; save(s);} 
+function renderRecipes(){
+  const list=document.getElementById('recipes-list');
+  const items = Object.entries(recipes).map(([k,r])=>{
+    return `<article class="card" data-key="${k}"><h2>${r.title}</h2><p class="small">${r.desc||''}</p><b>Ingredientes</b><ul>${(r.ingredients||[]).map(i=>`<li>${i}</li>`).join('')}</ul><b>Modo</b><ol>${(r.steps||[]).map(s=>`<li>${s}</li>`).join('')}</ol><div style="display:flex;gap:8px;margin-top:10px"><button class="secondary edit-recipe" data-key="${k}">Editar</button><button class="secondary delete-recipe" data-key="${k}">Apagar</button></div></article>`
+  }).join('');
+  list.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b>Minhas receitas</b><button id="add-recipe" class="primary">Adicionar receita</button></div>` + (items || '<div class="empty">Sem receitas</div>');
+}
+
+// simple prompt-based CRUD (falls back to simple inputs). For richer UI, replace with modal forms.
+function promptRecipe(existing){
+  const title = prompt('Título da receita:', existing?.title||'');
+  if(!title) return null;
+  const desc = prompt('Descrição curta:', existing?.desc||'');
+  const ingredients = prompt('Ingredientes (separados por ; ):', (existing?.ingredients||[]).join(';')) || '';
+  const steps = prompt('Modo / passos (separados por ; ):', (existing?.steps||[]).join(';')) || '';
+  return {title,desc,ingredients:ingredients.split(';').map(s=>s.trim()).filter(Boolean),steps:steps.split(';').map(s=>s.trim()).filter(Boolean)};
+}
+
+document.addEventListener('click', e=>{
+  const add = e.target && e.target.id==='add-recipe'; if(add){const r=promptRecipe(); if(r){const k='r-'+Date.now();recipes[k]=r; saveRecipes(); renderRecipes();}}
+  const edit = e.target && e.target.closest && e.target.closest('.edit-recipe');
+  if(edit){const k=edit.getAttribute('data-key');const r=promptRecipe(recipes[k]); if(r){recipes[k]=r; saveRecipes(); renderRecipes();}}
+  const del = e.target && e.target.closest && e.target.closest('.delete-recipe');
+  if(del){const k=del.getAttribute('data-key'); if(confirm('Apagar receita "'+(recipes[k]?.title||k)+'"?')){delete recipes[k]; saveRecipes(); renderRecipes();}}
+});
 
 // when navigating to recipes, render
-document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{show(b.dataset.go);if(b.dataset.go==='home')home();if(b.dataset.go==='session')session();if(b.dataset.go==='calendar-view')calendar();if(b.dataset.go==='recipes')renderRecipes()}));
+document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{show(b.dataset.go);if(b.dataset.go==='home')home();if(b.dataset.go==='session')session();if(b.dataset.go==='calendar-view')calendar();if(b.dataset.go==='recipes'){recipes = Object.assign({}, DEFAULT_RECIPES, data().recipes || {});renderRecipes()}}));
 
   </script>
 </body>
