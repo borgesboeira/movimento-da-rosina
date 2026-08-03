@@ -8,15 +8,44 @@ service cloud.firestore {
 
       // Allow create and update only if the user is authenticated and owns the doc
       // Also validate that only expected keys are written and basic types match
+      function validRecipes(){
+        return request.resource.data.recipes == null || (
+          request.resource.data.recipes is map &&
+          request.resource.data.recipes.values().all(r => (
+            (r.title == null || r.title is string) &&
+            (r.desc == null || r.desc is string) &&
+            (r.img == null || r.img is string) &&
+            (r.ingredients == null || (r.ingredients is list && r.ingredients.values().all(i => i is string))) &&
+            (r.steps == null || (r.steps is list && r.steps.values().all(s => s is string)))
+          ))
+        );
+      }
+
+      function validExercises(){
+        return request.resource.data.exercises == null || (
+          request.resource.data.exercises is map &&
+          request.resource.data.exercises.values().all(e => (
+            (e.name == null || e.name is string) &&
+            (e.goal == null || e.goal is string) &&
+            (e.img == null || e.img is string) &&
+            (e.dose == null || e.dose is string) &&
+            (e.steps == null || (e.steps is list && e.steps.values().all(s => s is string))) &&
+            (e.variants == null || e.variants is map)
+          ))
+        );
+      }
+
       function validPayload() {
         return (
-          // only allow these top-level keys (extra keys are rejected)
-          (request.resource.data.keys().hasOnly(['done','feeling','feelingDate','fontsize','comfort']) || request.resource.data.keys().size() == 0)
-          && (request.resource.data.fontsize == null || request.resource.data.fontsize is int)
+          // allow these top-level keys (extra keys are rejected)
+          (request.resource.data.keys().hasOnly(['done','feeling','feelingDate','fontsize','comfort','recipes','exercises']) || request.resource.data.keys().size() == 0)
+          && (request.resource.data.fontsize == null || request.resource.data.fontsize is number)
           && (request.resource.data.comfort == null || request.resource.data.comfort is bool)
           && (request.resource.data.feeling == null || request.resource.data.feeling is string)
           && (request.resource.data.feelingDate == null || request.resource.data.feelingDate is string)
           && (request.resource.data.done == null || request.resource.data.done is map)
+          && validRecipes()
+          && validExercises()
         );
       }
 
