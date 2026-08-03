@@ -41,6 +41,7 @@
         <button id="increase-text" aria-label="Aumentar texto">A+</button>
         <button id="comfort-mode" aria-pressed="false" aria-label="Modo confortável">Conforto</button>
         <button id="sound-mode" aria-label="Modo som">Som</button>
+        <span id="sync-status" style="margin-left:8px;font-size:.85rem;color:var(--muted)">Sync: —</span>
       </div>
       <span class="heart" aria-hidden="true">♥</span>
     </header>
@@ -113,7 +114,7 @@
       <label class="small">Descrição curta:<input id="edit-ex-goal" style="width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid var(--line)"></label>
       <label class="small">Passos (uma por linha):<textarea id="edit-ex-steps" rows="4" style="width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid var(--line)"></textarea></label>
       <div style="display:flex;gap:12px;align-items:flex-start">
-        <div style="flex:1"><img id="edit-ex-preview" src="assets/placeholder.png" alt="Preview" style="width:100%;height:auto;border-radius:12px;background:#f8f3ea;border:1px solid var(--line)"></div>
+        <div style="flex:1"><img id="edit-ex-preview" src="assets/placeholder.svg" alt="Preview" style="width:100%;height:auto;border-radius:12px;background:#f8f3ea;border:1px solid var(--line)"></div>
         <div style="width:220px;flex-shrink:0">
           <input type="file" id="edit-ex-file" accept="image/*" style="width:100%">
           <p class="small">Tamanho ideal: 800×800 px (PNG/SVG). Recomenda-se ≤200KB. Nome para assets (opcional): <code>ex-{id}.png</code></p>
@@ -169,9 +170,12 @@
         }catch(e){console.warn('loadRemote',e)}
       }
 
+      function setSyncStatus(s){const el=document.getElementById('sync-status'); if(!el) return; if(s==='ok'){el.textContent='Sync: OK'; el.style.color='var(--teal-dark)'} else if(s==='erro'){el.textContent='Sync: Erro'; el.style.color='#c95745'} else {el.textContent='Sync: -'; el.style.color='var(--muted)'}}
       function saveRemote(x){
         if(!window.__rosina_uid) return;
-        try{ db.collection('users').doc(window.__rosina_uid).set(x, {merge:true}).catch(()=>{}); }catch(e){}
+        try{
+          db.collection('users').doc(window.__rosina_uid).set(x, {merge:true}).then(()=>{ setSyncStatus('ok'); }).catch(err=>{ console.warn('saveRemote error',err); setSyncStatus('erro'); alert('Erro ao sincronizar com servidor. Ver console para detalhes (pode ser CORS ou bloqueio do navegador).'); });
+        }catch(e){ console.warn('saveRemote exception',e); setSyncStatus('erro'); }
       }
     }
 
@@ -299,7 +303,7 @@
 
     function localDate(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate())} function key(d){return d.toISOString().slice(0,10)}
     function data(){try{const x=JSON.parse(localStorage.getItem(KEY))||{};return Object.assign({done:{},recipes:{},exercises:{},feeling:'ready',feelingDate:'',fontsize:16,comfort:false}, x);}catch{return {done:{},recipes:{},exercises:{},feeling:'ready',feelingDate:'',fontsize:16,comfort:false}}}
-    function save(x){localStorage.setItem(KEY,JSON.stringify(x)); try{ if(window && window.__rosina_uid && typeof saveRemote==='function') saveRemote(x); }catch(e){/* ignore */} }
+    function save(x){localStorage.setItem(KEY,JSON.stringify(x)); try{ if(window && window.__rosina_uid && typeof saveRemote==='function'){ setSyncStatus('-'); saveRemote(x); } }catch(e){/* ignore */} }
     function current(){let n=localDate(new Date()); if(n<START)return START;if(n>END)return END;return n} function index(d){return Math.floor((localDate(d)-START)/86400000)}
     function dailyPlan(d){return plan[index(d)%plan.length]}
     function feeling(d){let x=data();return x.feelingDate===key(d)?x.feeling||'ready':'ready'}
@@ -344,7 +348,7 @@ document.getElementById('history')?.addEventListener('click', e=>{
         name.value = '';
         goal.value = '';
         steps.value = '';
-        preview.src = 'assets/placeholder.png';
+        preview.src = 'assets/placeholder.svg';
         if(file) file.value = '';
       } else {
         const ex = exercises[key] || {};
@@ -353,7 +357,7 @@ document.getElementById('history')?.addEventListener('click', e=>{
         name.value = ex.name || '';
         goal.value = ex.goal || '';
         steps.value = (ex.steps || []).join('\n');
-        preview.src = ex.img || 'assets/placeholder.png';
+        preview.src = ex.img || 'assets/placeholder.svg';
         if(file) file.value = '';
       }
       modal.classList.remove('hide');

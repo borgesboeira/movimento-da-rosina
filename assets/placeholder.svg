@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <rect width="100%" height="100%" fill="#f8f3ea" rx="28"/>
+  <g transform="translate(120,160)">
+    <rect x="60" y="220" width="320" height="200" rx="18" fill="#e8f5f2" />
+    <circle cx="220" cy="100" r="56" fill="#16324f" opacity="0.95" />
+    <path d="M120 360 C 160 320 280 320 320 360" fill="#0f766e" opacity="0.06" />
+  </g>
+  <text x="50%" y="720" font-family="system-ui,Segoe UI,Arial" font-size="30" fill="#61727c" text-anchor="middle">Ilustração (placeholder)</text>
+</svg>
