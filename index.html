@@ -173,51 +173,70 @@
       function setSyncStatus(s){const el=document.getElementById('sync-status'); if(!el) return; if(s==='ok'){el.textContent='Sync: OK'; el.style.color='var(--teal-dark)'} else if(s==='erro'){el.textContent='Sync: Erro'; el.style.color='#c95745'} else {el.textContent='Sync: -'; el.style.color='var(--muted)'}}
       async function saveRemote(x){
         if(!window.__rosina_uid) return;
+        const uid = window.__rosina_uid;
+        setSyncStatus('-');
         try{
-          setSyncStatus('-');
-          // Make a deep-serializable copy
+          // Deep-copy and prepare payload
           const payload = JSON.parse(JSON.stringify(x));
 
-          // Helper: upload a File/Blob found in the live object and replace with a Storage URL in the payload
+          // Upload any File objects attached in the live object and replace with Storage URLs
           const uploads = [];
-          const uid = window.__rosina_uid;
-
           function findAndQueueUploads(origMap, payloadMap, folder){
             if(!origMap || typeof origMap !== 'object') return;
             for(const id of Object.keys(origMap)){
               const orig = origMap[id];
               const p = (payloadMap && payloadMap[id]) || {};
-
-              // common patterns where an uploaded file may be attached: .__file or .file (from input handlers)
               const file = (orig && (orig.__file || orig.file));
               if(file && (file instanceof File || (file && typeof file.type === 'string' && typeof file.size === 'number'))){
                 const path = `${folder}/${uid}/${id}.png`;
-                const up = firebase.storage().ref(path).put(file).then(()=> firebase.storage().ref(path).getDownloadURL()).then(url => { 
-                  if(!payloadMap[id]) payloadMap[id] = {};
-                  payloadMap[id].img = url;
-                }).catch(err=>{ console.warn('upload error',path,err); });
+                const up = firebase.storage().ref(path).put(file)
+                  .then(()=> firebase.storage().ref(path).getDownloadURL())
+                  .then(url => { if(!payloadMap[id]) payloadMap[id] = {}; payloadMap[id].img = url; })
+                  .catch(err=>{ console.warn('upload error',path,err); });
                 uploads.push(up);
               } else {
-                // if payload has non-string img (e.g., File accidentally serialized as {}), remove it so Firestore won't reject
-                if(p && p.img && typeof p.img !== 'string'){
-                  delete p.img;
-                }
+                if(p && p.img && typeof p.img !== 'string') delete p.img;
               }
             }
           }
 
-          // Queue uploads for exercises and recipes if present
           findAndQueueUploads(x.exercises, payload.exercises = payload.exercises || {}, 'users/exercises');
           findAndQueueUploads(x.recipes, payload.recipes = payload.recipes || {}, 'users/recipes');
 
           if(uploads.length) await Promise.all(uploads);
 
-          // Final safety: ensure payload contains only plain JS values (no undefined/functions)
           const safePayload = JSON.parse(JSON.stringify(payload));
 
-          await db.collection('users').doc(uid).set(safePayload, {merge:true});
-          setSyncStatus('ok');
-        }catch(e){ console.warn('saveRemote exception',e); setSyncStatus('erro'); alert('Erro ao sincronizar com servidor. Ver console para detalhes (pode ser CORS ou bloqueio do navegador).'); }
+          // Retry loop for transient issues (CORS, network, blocked-by-client)
+          let lastErr = null;
+          for(let attempt=1; attempt<=3; attempt++){
+            try{
+              await db.collection('users').doc(uid).set(safePayload, {merge:true});
+              setSyncStatus('ok');
+              return;
+            }catch(err){
+              lastErr = err;
+              console.warn('saveRemote attempt',attempt,'failed',err);
+              // Detect common blocked-by-client condition
+              const msg = (err && err.message) ? err.message : String(err);
+              if(msg.includes('ERR_BLOCKED_BY_CLIENT') || msg.toLowerCase().includes('blocked')){
+                setSyncStatus('erro');
+                alert('Sincronização bloqueada localmente (Ex.: AdBlock). Desative extensões de bloqueio para este site e tente novamente.');
+                return;
+              }
+              // short backoff
+              await new Promise(r=>setTimeout(r, 500 * attempt));
+            }
+          }
+
+          console.error('saveRemote final failure', lastErr);
+          setSyncStatus('erro');
+          alert('Erro ao sincronizar com servidor. Pode ser CORS, bloqueio do navegador, ou problemas de rede. Veja o console para detalhes.');
+        }catch(e){
+          console.warn('saveRemote exception',e);
+          setSyncStatus('erro');
+          alert('Erro ao preparar dados para sincronização. Veja o console para detalhes.');
+        }
       }
     }
 
