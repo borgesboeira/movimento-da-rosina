@@ -171,13 +171,53 @@
       }
 
       function setSyncStatus(s){const el=document.getElementById('sync-status'); if(!el) return; if(s==='ok'){el.textContent='Sync: OK'; el.style.color='var(--teal-dark)'} else if(s==='erro'){el.textContent='Sync: Erro'; el.style.color='#c95745'} else {el.textContent='Sync: -'; el.style.color='var(--muted)'}}
-      function saveRemote(x){
+      async function saveRemote(x){
         if(!window.__rosina_uid) return;
         try{
-          // Serialize to remove any non-serializable values (DOM nodes, functions)
+          setSyncStatus('-');
+          // Make a deep-serializable copy
           const payload = JSON.parse(JSON.stringify(x));
-          db.collection('users').doc(window.__rosina_uid).set(payload, {merge:true}).then(()=>{ setSyncStatus('ok'); }).catch(err=>{ console.warn('saveRemote error',err); setSyncStatus('erro'); alert('Erro ao sincronizar com servidor. Ver console para detalhes (pode ser CORS ou bloqueio do navegador).'); });
-        }catch(e){ console.warn('saveRemote exception',e); setSyncStatus('erro'); }
+
+          // Helper: upload a File/Blob found in the live object and replace with a Storage URL in the payload
+          const uploads = [];
+          const uid = window.__rosina_uid;
+
+          function findAndQueueUploads(origMap, payloadMap, folder){
+            if(!origMap || typeof origMap !== 'object') return;
+            for(const id of Object.keys(origMap)){
+              const orig = origMap[id];
+              const p = (payloadMap && payloadMap[id]) || {};
+
+              // common patterns where an uploaded file may be attached: .__file or .file (from input handlers)
+              const file = (orig && (orig.__file || orig.file));
+              if(file && (file instanceof File || (file && typeof file.type === 'string' && typeof file.size === 'number'))){
+                const path = `${folder}/${uid}/${id}.png`;
+                const up = firebase.storage().ref(path).put(file).then(()=> firebase.storage().ref(path).getDownloadURL()).then(url => { 
+                  if(!payloadMap[id]) payloadMap[id] = {};
+                  payloadMap[id].img = url;
+                }).catch(err=>{ console.warn('upload error',path,err); });
+                uploads.push(up);
+              } else {
+                // if payload has non-string img (e.g., File accidentally serialized as {}), remove it so Firestore won't reject
+                if(p && p.img && typeof p.img !== 'string'){
+                  delete p.img;
+                }
+              }
+            }
+          }
+
+          // Queue uploads for exercises and recipes if present
+          findAndQueueUploads(x.exercises, payload.exercises = payload.exercises || {}, 'users/exercises');
+          findAndQueueUploads(x.recipes, payload.recipes = payload.recipes || {}, 'users/recipes');
+
+          if(uploads.length) await Promise.all(uploads);
+
+          // Final safety: ensure payload contains only plain JS values (no undefined/functions)
+          const safePayload = JSON.parse(JSON.stringify(payload));
+
+          await db.collection('users').doc(uid).set(safePayload, {merge:true});
+          setSyncStatus('ok');
+        }catch(e){ console.warn('saveRemote exception',e); setSyncStatus('erro'); alert('Erro ao sincronizar com servidor. Ver console para detalhes (pode ser CORS ou bloqueio do navegador).'); }
       }
     }
 
