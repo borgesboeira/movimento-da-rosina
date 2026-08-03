@@ -1,0 +1,36 @@
+name: Apply Firebase Storage CORS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apply-cors:
+    name: Apply CORS to Firebase Storage bucket
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: bem-estar-da-rosina
+          export_default_credentials: true
+
+      - name: Apply CORS using gsutil
+        run: |
+          echo "Applying CORS from firebase/cors.json to bucket gs://bem-estar-da-rosina.firebasestorage.app"
+          gsutil cors set firebase/cors.json gs://bem-estar-da-rosina.firebasestorage.app
+
+      - name: Verify CORS
+        run: |
+          echo "Current CORS for bucket:"
+          gsutil cors get gs://bem-estar-da-rosina.firebasestorage.app
