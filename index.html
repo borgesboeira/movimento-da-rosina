@@ -174,7 +174,9 @@
       function saveRemote(x){
         if(!window.__rosina_uid) return;
         try{
-          db.collection('users').doc(window.__rosina_uid).set(x, {merge:true}).then(()=>{ setSyncStatus('ok'); }).catch(err=>{ console.warn('saveRemote error',err); setSyncStatus('erro'); alert('Erro ao sincronizar com servidor. Ver console para detalhes (pode ser CORS ou bloqueio do navegador).'); });
+          // Serialize to remove any non-serializable values (DOM nodes, functions)
+          const payload = JSON.parse(JSON.stringify(x));
+          db.collection('users').doc(window.__rosina_uid).set(payload, {merge:true}).then(()=>{ setSyncStatus('ok'); }).catch(err=>{ console.warn('saveRemote error',err); setSyncStatus('erro'); alert('Erro ao sincronizar com servidor. Ver console para detalhes (pode ser CORS ou bloqueio do navegador).'); });
         }catch(e){ console.warn('saveRemote exception',e); setSyncStatus('erro'); }
       }
     }
